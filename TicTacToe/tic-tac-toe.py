@@ -1,152 +1,176 @@
 import sys
+import os
+import platform
 import time
 
 
 
-def verifica_saida(jogo_velha):
-    # sair: determina se ao final da execução dessa função o programa será encerrado.
-    sair = False
+def divideCampoFileiras(campo) -> list:
+    """
+        O *desenho* do jogo da velha é separado em linhas, colunas e diagonais, para verificar se alguém ganhou.
+        Facilitando sua vida...
 
-    # o *desenho* do jogo da velha é separado em linhas, colunas e diagonais, para verificar se foi 
-    # feito algum jogo(alguém ganhou*).
-    # No jogo da velha, se qualquer fileira, seja na vertical, horizontal ou diagonal estiver preechida
-    # com os mesmos símbolos('X' ou 'O'), então alguém ganhou o jogo.
+        | [0][0] | [0][1] | [0][2] |
+        | [1][0] | [1][1] | [1][2] |
+        | [2][0] | [2][1] | [2][2] |
+    """
 
-    # Facilitando sua vida...
+    ln = campo[:]
+    cl = [
+        [campo[0][0], campo[1][0], campo[2][0]],
+        [campo[0][1], campo[1][1], campo[2][1]],
+        [campo[0][2], campo[1][2], campo[2][2]]
+        ]
+    diag = [
+        [campo[0][0], campo[1][1], campo[2][2]],
+        [campo[0][2], campo[1][1], campo[2][0]]
+        ]
 
-    # | [0][0] | [0][1] | [0][2] |
-    # | [1][0] | [1][1] | [1][2] |
-    # | [2][0] | [2][1] | [2][2] |
+    return ln, cl, diag
 
-    linhas = jogo_velha[:]
-    colunas = [ [linhas[0][0], linhas[1][0], linhas[2][0]], [linhas[0][1], linhas[1][1], linhas[2][1]], [linhas[0][2], linhas[1][2], linhas[2][2]] ]
-    diagonal = [ [linhas[0][0], linhas[1][1], linhas[2][2]], [linhas[0][2], linhas[1][1], linhas[2][0]] ]
 
-    # dict_possibilidades: dicionário que emgloba as linhas, colunas e diagonais, transformando cada
-    # uma das listas internas em string(com o método "".join()), para futura verificação com 'xxx' /
-    # 'ooo'.
-
-    dict_possibilidades = {   
-        'linhas' : ("".join(linhas[0]), "".join(linhas[1]), "".join(linhas[2])),
-        'colunas' : ("".join(colunas[0]), "".join(colunas[1]), "".join(colunas[2])),
-        'diagonal' : ("".join(diagonal[0]), "".join(diagonal[1]))
+def verificaAlguemVenceu(jogo_velha) -> bool:
+    """
+    Objetivo da função é verificar se 'xxx' ou 'ooo' ocorre na 'linhas', 'colunas', ou 'diagonal', se sim
+    então alguém venceu o jogo, portanto, True para condição de saída.
+    """
+    sair = bool()
+    linhas, colunas, diagonal = divideCampoFileiras(jogo_velha)
+    dict_jogo_velha = {   
+        "linhas" : ("".join(linhas[0]), "".join(linhas[1]), "".join(linhas[2])),
+        "colunas" : ("".join(colunas[0]), "".join(colunas[1]), "".join(colunas[2])),
+        "diagonal" : ("".join(diagonal[0]), "".join(diagonal[1]))
     }
-    
-    # 'X': representa os lances do jogador 1
-    simbolo1 = 'X'
-    # 'O': representa os lances do jogador 2
-    simbolo2 = 'O'
-   
-    # o laço for vai verificar se 'xxx' ou 'ooo' ocorre na 'linhas', 'colunas', ou 'diagonal', se sim
-    # então sair = True
 
-    for chave in dict_possibilidades.keys():
-        # Ex.: simbolo1 = 'X' ~> simbolo1 * 3 = 'XXX'
-        # Ex.: simbolo2 = 'O' ~> simbolo2 * 3 = 'OOO'
-
-        if (simbolo1 * 3) in dict_possibilidades[chave]:
-            print("Jogador 1 venceu!")
+    for chave in dict_jogo_velha.keys():       
+        if ("XXX" in dict_jogo_velha[chave]) or ("OOO" in dict_jogo_velha):  
+            print("~ Jogador 1 venceu!") if ("XXX" in dict_jogo_velha[chave]) else print("~ Jogador 2 venceu!")           
             sair = True
-            break
-
-        if (simbolo2 * 3) in dict_possibilidades[chave]:
-            print("Jogador 2 venceu!")
-            sair = True
-            break
-
+            break    
+        
     return sair
 
 
-
-def troca(c, ln, col, simbolo):
-    # campo(c) na linha 'ln', coluna 'col', recebe 'simbolo' ('X' ou 'O')
-    # Exemplo.:
-    # posicao: 5
-    # ln(linha) ~> | 4 | 5 | 6 |
-    # ln(linha) ~> | 4 | X/O | 6 |
-
+def efetivaJogada(c, ln, col, simbolo):
+    """
+        campo(c) na linha 'ln', coluna 'col', recebe 'simbolo' ('X' ou 'O')
+        Exemplo.:
+        posicao: 5
+        ln(linha) ~> | 4 | 5 | 6 |
+        ln(linha) ~> | 4 | X/O | 6 |
+    """
     c[ln][col] = simbolo
 
     return c 
 
 
+def verificaJogada(campo, rodada, lance, simbolo):
+    """
+    A posição inserida pelo jogador não pode estar preenchida com um símbolo('X' / 'O').
+    A procura por um valor correspondente ao lance por meio do método .index() pode gerar
+    uma exceção do ValueError caso o valor procurado não exista(por já ter um 'X' ou 'O')...
+    """
 
-def verifica_jogada(campo, rodada, lance, marcacao):
-    # VARIÁVEIS LOCAIS: 
-    # jogo_da_velha ~> campo
-    # jogadas ~> rodada
-    # posicao ~> lance
-    # marcacao ~> marcacao  :\
-
-    # Critério de avaliação:
-    # A posição inserida pelo jogador deve ser um inteiro de 1 a 9, e o campo correspondente não pode estar preenchido('X' / 'O').
-    # Qualquer outra entrada que vá além da condição acima, não contabiliza a rodada.
-
-    # se lance for um número entre 1 e 9, então o usuário digitou uma posição válida. 
-    if (lance in '123456789') and (lance.isdigit()):
-
-        try:
-            # Se lance <= '3': o usuário escolheu um campo da terceira linha(debaixo) ~> | 1 | 2 | 3 |
-            # Senão se(else if -- elif) lance <= '6': o usuário escolheu um campo da segunda linha(meio) ~> | 4 | 5 | 6 |
-            # Senão se(else if -- elif) lance <= '9': o usuário escolheu um campo da primeira linha(de cima) ~> | 7 | 8 | 9 |
-
-            # if ( lance == campo[ linha ][ campo[linha].index(lance) ] )
-            # verificamos se o lance(que pode ser um dos números que indica a posição ~> 1 a 9) é
-            # igual a algum elemento de sua linha(leia os comentários anteriores), se sim, então aquele
-            # "espaço" não foi marcado pelo usuário(ou seja, não tem "X" / "O" ~> portanto, está como 
-            # sua formação inicial(jogo_da_velha)).
-
-            # campo = troca(campo, indice(linha), coluna(lista_interna), marcacao)
-            # rodada +=1
-            # se a condição for verdadeira(ln 87..91), então iremos trocar o número daquele "quadradinho"
-            # ..coluna... pelo simbolo do jogador ('X' / 'O'), chamando a função troca.
+    try: 
+        if (lance <= "3"):
+            if (lance == campo[2][campo[2].index(lance)]):
+                campo = efetivaJogada(campo, 2, campo[2].index(lance), simbolo)
             
-            if (lance <= '3'):
-                if (lance == campo[2][campo[2].index(lance)]):
-                    campo = troca(campo, 2, campo[2].index(lance), marcacao)
-                    rodada += 1
-            
-            elif (lance <= '6'):
-                if (lance == campo[1][campo[1].index(lance)]):
-                    campo = troca(campo, 1, campo[1].index(lance), marcacao)
-                    rodada += 1
+        elif (lance <= "6"):
+            if (lance == campo[1][campo[1].index(lance)]):
+                campo = efetivaJogada(campo, 1, campo[1].index(lance), simbolo)
 
-            elif (lance <= '9'):
-                if (lance == campo[0][campo[0].index(lance)]):
-                    campo = troca(campo, 0, campo[0].index(lance), marcacao)
-                    rodada += 1
+        elif (lance <= "9"):
+            if (lance == campo[0][campo[0].index(lance)]):
+                campo = efetivaJogada(campo, 0, campo[0].index(lance), simbolo)
 
+    except ValueError:
+        print("~ Posição {} já foi marcada.".format(lance))
 
-        # método .index() gera uma exceção do tipo ValueError caso o booleano seja False.
-        except ValueError:
-            print(f'Posição {lance} já foi marcada.')
-    
     else:
-        print('- A posição informada está incorreta! - '.upper(), 'Digite um número correspondente aos campos do jogo da velha.')
-
-
-    # Retorna o campo e a lista, caso foram alteradas, então é atribuido o novo campo e rodada para
-    # os parâmetros reais jogo_da_velha e jogadas.
+        print("~ Posição {} foi marcada com sucesso!".format(lance))
+        rodada += 1
+    
     return campo, rodada
 
 
+def validaEntrada(p) -> bool():
+    return True if ((p.isdigit()) and (p in "123456789") and (len(p) == 1)) else False
 
-def main():
 
+def entrada(jogador, mensagem) -> str:
+    while True:
+        posicao = input("[*] Jogador {} | Símbolo {} {}".format(jogador[0], jogador[1], mensagem)).replace(" ", "")
+        
+        if validaEntrada(posicao):
+            break
+        else:
+            print("~ Valor Inválido. Digite um número na faixa de 1 a 9.\n")
+
+    return posicao
+
+
+def verificaVezJogador(rodada) -> tuple:
+    """
+        A convenção que decidi usar aqui é que:
+        -- Jogador 1 jogará nas rodadas ímpares(5 vezes)
+        -- Jogador 2 jogará nas rodadas pares(4 vezes)
+    """
+    return (1, "X") if (rodada % 2 == 1) else (2, "O") 
+
+
+def exibeJogoVelha(campo_velha, titulo="\n*** JOGO DA VELHA  X / O ***\n", char="-"):
+    print(titulo)
+    # ln - linha
+    for ln in campo_velha:
+            print(char * 13)
+            print("| {0} | {1} | {2} |".format("".join(ln[0]), "".join(ln[1]), "".join(ln[2])))
+    
+    print(char * 13)
+
+    return
+
+
+def congelaPrograma(t=0.5):
+    time.sleep(t)
+
+    return
+
+
+def limpaTela(so):
+    if so == "Windows":
+        os.system("cls")
+    elif so == "Linux":
+        os.system("clear")
+
+    return
+
+
+def verificaTipoSistema() -> str:
+    """
+        Função usada para evitar conflito posteriomente
+        quando o for limpar o console/terminal do usuário.
+    """
+    return platform.system()
+
+
+def exibeMensagemApresentacao():
     print('''\n
     -
     -
-    Autor: Matias
-    Data: 05 / 06 / 22
     Nome do programa: Jogo da velha
-    -
+    Autor: Matias
+    Data: 
+    -   jogo_da_velha 1.0V: 05 / 06 / 22   
+    -   jogo_da_velha 1.1V: 08 / 07 / 22
+    -   
     -
     Atenção ao jogar:
     -
     Em um jogo da velha, cada "quadradinho" corresponde a um campo,
     que será identificado nesse programa por NÚMEROS, de 1 a 9.
     Portanto, se são 9 quadradinhos, teremos 9 rodadas. Cada usuário
-    deverá jogar UMA VEZ POR RODADA.
+    deverá jogar apenas UMA VEZ POR RODADA.
     -
     Se uma opção inválida for inserida incorretamente, a rodada não
     será contabilizada.
@@ -158,78 +182,42 @@ def main():
     Bom jogo!
     \n
     ''')
-    time.sleep(2)
+
+    return
+
+
+def main():
+    sistema_em_uso = verificaTipoSistema()   
+
+    limpaTela(sistema_em_uso)
+    exibeMensagemApresentacao()
+    congelaPrograma(5)
 
     # criando os campos do jogo da velha
-    jogo_da_velha = [list('789'), list('456'), list('123')]
-
-    # jogadas: cada lance de um jogador corresponde a uma jogada.
-    jogadas = 1
-    
-    # jogadas <= 9: o jogo da velha é composto por 9 campos, que devem ser preecnhidos a cada jogada.
-    
-    while jogadas <= 9:
-
-        print('JOGO DA VELHA  X  /  O')
-        print('')
-
-        # exibindo o campo completo
-        for linha in jogo_da_velha:
-            print('-' * 13)
-            print('| {0} | {1} | {2} |'.format("".join(linha[0]), "".join(linha[1]), "".join(linha[2])))
-
-        print('-' * 13)
-        print(f'\nRODADA {jogadas}\n')
-
-        marcacao = str()
-        jogador = int()
-
-        if (jogadas % 2) == 1:
-            jogador = 1
-            marcacao = 'X'
-        else:
-            jogador = 2
-            marcacao = 'O'
-
-        # solicitando uma posição para marcar
-        posicao = input(f'JOGADOR {jogador} | Insira a posição do campo a marcar(de 1 a 9) ~> ')
-        time.sleep(.5)
-
-        # Função verifica_jogada: retorna 2 valores como saída. Sendo o primeiro elemento desempacotado é 
-        # o jogo da velha alterado(com a marcação('X' ou 'O') já inclusa), e o segundo elemento corresponde
-        # ao número de rodadas(jogadas). A sintaxe do python permite esse tipo de atribuição, visto que o 
-        # módulo chamado a seguir retorna dois valores, que serão desempacotados na mesma ordem(left-to-right)
-        # que as variáveis anteriores ao sinal de atribuição(nº valores retornados == nº de variáveis que receberam atribuição).
-
-        jogo_da_velha, jogadas = verifica_jogada(jogo_da_velha, jogadas, posicao, marcacao)
+    jogo_da_velha = [list("789"), list("456"), list("123")]
+    rodada = 1    
         
-        print('')
+    while rodada <= 9:
+        exibeJogoVelha(jogo_da_velha)
+        print("\n<<< RODADA {} >>>\n".format(rodada))
 
-        time.sleep(.5)
+        jogador = verificaVezJogador(rodada)
+        posicao = entrada(jogador, "| Insira a posição do campo a marcar(de 1 a 9) ~> ")
+        jogo_da_velha, rodada = verificaJogada(jogo_da_velha, rodada, posicao, jogador[1])
 
-        if verifica_saida(jogo_da_velha):
-            # do modo que a condição do while está estabelecida, assim que o laço é encerrado, o jogo
-            # feito(com uma fileira(na horizontal, vertical ou diagonal) completa('X' ou 'O')) não é 
-            # exibido, por isso o jogo da velha é printado novamente.
+        congelaPrograma(1) 
 
-            print('\nFinal:\n')
-            print(f"""\n
-            {'-'*13}
-            | {jogo_da_velha[0][0]} | {jogo_da_velha[0][1]} | {jogo_da_velha[0][2]} |
-            | {jogo_da_velha[1][0]} | {jogo_da_velha[1][1]} | {jogo_da_velha[1][2]} |
-            | {jogo_da_velha[2][0]} | {jogo_da_velha[2][1]} | {jogo_da_velha[2][2]} |
-            {'-'*13}\n\n
-            """)
+        if verificaAlguemVenceu(jogo_da_velha):
 
-            time.sleep(5)
+            exibeJogoVelha(jogo_da_velha, "\n*** Final ***\n")
+            congelaPrograma(5)
             sys.exit()
+            
+    exibeJogoVelha(jogo_da_velha, "\n*** Deu Velha! ***\n")
 
-    print("\nDeu velha!\n")
-
-    return None
+    return 
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
 
